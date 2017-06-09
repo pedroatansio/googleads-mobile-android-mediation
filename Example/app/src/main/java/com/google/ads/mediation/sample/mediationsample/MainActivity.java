@@ -18,6 +18,7 @@ package com.google.ads.mediation.sample.mediationsample;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -35,6 +36,7 @@ import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.InterstitialAd;
 import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.formats.NativeAd;
+import com.google.android.gms.ads.formats.NativeAdView;
 import com.google.android.gms.ads.formats.NativeAppInstallAd;
 import com.google.android.gms.ads.formats.NativeAppInstallAdView;
 import com.google.android.gms.ads.formats.NativeContentAd;
@@ -42,6 +44,14 @@ import com.google.android.gms.ads.formats.NativeContentAdView;
 import com.google.android.gms.ads.reward.RewardItem;
 import com.google.android.gms.ads.reward.RewardedVideoAd;
 import com.google.android.gms.ads.reward.RewardedVideoAdListener;
+import com.inlocomedia.android.ads.AdError;
+import com.inlocomedia.android.ads.AdManager;
+import com.inlocomedia.android.ads.AdType;
+import com.inlocomedia.android.ads.InLocoMedia;
+import com.inlocomedia.android.ads.InLocoMediaOptions;
+import com.inlocomedia.android.ads.NativeViewBinder;
+import com.inlocomedia.android.ads.nativeads.NativeAdManagerInterface;
+import com.inlocomedia.android.core.profile.Device;
 
 import java.util.List;
 
@@ -50,6 +60,8 @@ import java.util.List;
  * custom event.
  */
 public class MainActivity extends AppCompatActivity {
+
+    private static final boolean FORCE_PRIMARY_AD_REQUEST_FAIL = true;
 
     private static final String LOG_TAG = "SampleApp";
 
@@ -64,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        initInLocoMediaSDK();
 
         /**
          * Sample Custom Event.
@@ -94,8 +108,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAdFailedToLoad(int errorCode) {
                 Toast.makeText(MainActivity.this,
-                        "Error loading custom event interstitial, code " + errorCode,
-                        Toast.LENGTH_SHORT).show();
+                               "Error loading custom event interstitial, code " + errorCode,
+                               Toast.LENGTH_SHORT).show();
                 mCustomEventButton.setEnabled(true);
             }
 
@@ -158,8 +172,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAdFailedToLoad(int errorCode) {
                 Toast.makeText(MainActivity.this,
-                        "Error loading adapter interstitial, code " + errorCode,
-                        Toast.LENGTH_SHORT).show();
+                               "Error loading adapter interstitial, code " + errorCode,
+                               Toast.LENGTH_SHORT).show();
                 mAdapterButton.setEnabled(true);
             }
 
@@ -187,8 +201,10 @@ public class MainActivity extends AppCompatActivity {
         /**
          * Sample Custom Event Native ad.
          */
-        AdLoader customEventNativeLoader = new AdLoader.Builder(this,
-                getResources().getString(R.string.customevent_native_ad_unit_id))
+
+        String nativeAdUnit = FORCE_PRIMARY_AD_REQUEST_FAIL ? "123456789" : getResources().getString(R.string.customevent_native_ad_unit_id);
+
+        AdLoader customEventNativeLoader = new AdLoader.Builder(this, nativeAdUnit)
                 .forAppInstallAd(new NativeAppInstallAd.OnAppInstallAdLoadedListener() {
                     @Override
                     public void onAppInstallAdLoaded(NativeAppInstallAd ad) {
@@ -216,10 +232,45 @@ public class MainActivity extends AppCompatActivity {
                 .withAdListener(new AdListener() {
                     @Override
                     public void onAdFailedToLoad(int errorCode) {
+
                         Toast.makeText(MainActivity.this,
-                                "Custom event native ad failed with code: " + errorCode,
-                                Toast.LENGTH_SHORT).show();
+                                       "Custom event native ad failed with code: " + errorCode + ". Loading InLoco Ad...",
+                                       Toast.LENGTH_SHORT).show();
+
+                        FrameLayout frameLayout = (FrameLayout) findViewById(R.id.customeventnative_framelayout);
+                        View adView = getLayoutInflater().inflate(R.layout.ilm_ad_content, null);
+                        frameLayout.removeAllViews();
+                        frameLayout.addView(adView);
+
+                        NativeViewBinder viewBinder = getNativeViewBinder(adView);
+
+                        NativeAdManagerInterface nativeAdManagerInterface = new NativeAdManagerInterface(viewBinder) {
+                            @Override
+                            public void onAdViewReady() {
+                                Log.d("InLoco", "AdViewReady");
+                            }
+
+                            @Override
+                            public void onAdLeftApplication() {
+                                Log.d("InLoco", "AdLeftApplication");
+                            }
+
+                            @Override
+                            public void onAdError(AdError adError) {
+                                Log.d("InLoco", "AdError");
+                            }
+                        };
+
+                        AdManager adManager = new AdManager(getApplicationContext(), AdType.NATIVE_LARGE, nativeAdManagerInterface);
+
+                        String adUnitId = "bfe13804892dcaaa341b1d5ecad4b19ae4301137607c26c03605a7be97ba0504";
+                        com.inlocomedia.android.ads.AdRequest adRequest = new com.inlocomedia.android.ads.AdRequest();
+                        adRequest.setAdUnitId(adUnitId);
+
+                        adManager.loadAd(adRequest);
+
                     }
+
                 }).build();
         customEventNativeLoader.loadAd(new AdRequest.Builder().build());
 
@@ -227,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
          * Sample Adapter Native ad.
          */
         AdLoader adapterNativeLoader = new AdLoader.Builder(this,
-                getResources().getString(R.string.adapter_native_ad_unit_id))
+                                                            getResources().getString(R.string.adapter_native_ad_unit_id))
                 .forAppInstallAd(new NativeAppInstallAd.OnAppInstallAdLoadedListener() {
                     @Override
                     public void onAppInstallAdLoaded(NativeAppInstallAd ad) {
@@ -256,8 +307,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onAdFailedToLoad(int errorCode) {
                         Toast.makeText(MainActivity.this,
-                                "Sample adapter native ad failed with code: " + errorCode,
-                                Toast.LENGTH_SHORT).show();
+                                       "Sample adapter native ad failed with code: " + errorCode,
+                                       Toast.LENGTH_SHORT).show();
                     }
                 }).build();
 
@@ -310,8 +361,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onRewardedVideoAdFailedToLoad(int errorCode) {
                 Toast.makeText(MainActivity.this,
-                        "Sample adapter rewarded video ad failed with code: " + errorCode,
-                        Toast.LENGTH_SHORT).show();
+                               "Sample adapter rewarded video ad failed with code: " + errorCode,
+                               Toast.LENGTH_SHORT).show();
                 mAdapterVideoButton.setEnabled(true);
                 mAdapterVideoButton.setText("Load SampleAdapter Rewarded Video");
             }
@@ -330,7 +381,7 @@ public class MainActivity extends AppCompatActivity {
     private void loadRewardedVideoAd() {
         mAdapterVideoButton.setEnabled(false);
         mRewardedVideoAd.loadAd(getString(R.string.adapter_rewarded_video_ad_unit_id),
-                new AdRequest.Builder().build());
+                                new AdRequest.Builder().build());
     }
 
     /**
@@ -359,7 +410,7 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) adView.getBodyView()).setText(nativeAppInstallAd.getBody());
         ((Button) adView.getCallToActionView()).setText(nativeAppInstallAd.getCallToAction());
         ((ImageView) adView.getIconView()).setImageDrawable(nativeAppInstallAd.getIcon()
-                .getDrawable());
+                                                                    .getDrawable());
 
         List<NativeAd.Image> images = nativeAppInstallAd.getImages();
 
@@ -452,5 +503,35 @@ public class MainActivity extends AppCompatActivity {
             degree.setVisibility(View.VISIBLE);
             degree.setText(extras.getString(SampleCustomEvent.DEGREE_OF_AWESOMENESS));
         }
+    }
+
+    private NativeViewBinder getNativeViewBinder(View adView){
+
+        TextView title = (TextView) adView.findViewById(R.id.ilm_title);
+        TextView highlight = null;
+        TextView description = (TextView) adView.findViewById(R.id.ilm_description);
+        TextView callToAction = (TextView) adView.findViewById(R.id.ilm_call_to_action);
+        TextView offerText = null;
+        TextView expirationText = null;
+        ImageView image = (ImageView) adView.findViewById(R.id.ilm_image);
+        ImageView icon = (ImageView) adView.findViewById(R.id.ilm_icon);
+
+        return new NativeViewBinder(adView, title, highlight, description, callToAction, offerText, expirationText, image, icon);
+    }
+
+    private void initInLocoMediaSDK(){
+        // In Loco Media SDK Init
+        InLocoMediaOptions options = InLocoMediaOptions.getInstance(this);
+
+        // The AppId you acquired in earlier steps
+        options.setAdsKey("c1e67217086d7face84f89210130243aa8dadbf1f589d7be07c54284c130a45a");
+
+        // Verbose mode flag, if this is set as true InLocoMedia SDK will let you know about errors on the Logcat
+        options.setLogEnabled(true);
+
+        // Development Devices set here are only going to receive test ads
+        options.setDevelopmentDevices(Device.getDevelopmentDeviceId(MainActivity.this));
+
+        InLocoMedia.init(this, options);
     }
 }

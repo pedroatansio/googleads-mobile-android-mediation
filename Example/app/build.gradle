@@ -20,6 +20,19 @@ android {
 }
 
 dependencies {
+    // Required
+    compile 'com.inlocomedia.android:android-sdk:3.1.0' //Ads and Location SDK's
+
+    // Required
+    compile 'com.android.support:support-v4:25.3.1'
+
+    // Required: Access GooglePlayServices advertising id
+    compile 'com.google.android.gms:play-services-ads:10.2.6'
+
+    // Required for Notification Ads.
+    // Recommended for additional Ad targeting
+    compile 'com.google.android.gms:play-services-location:10.2.6'
+
     compile rootProject.ext.appcompatV7
     compile rootProject.ext.playServicesAds
     compile project(':adapter')
