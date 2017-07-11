@@ -36,7 +36,6 @@ import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.InterstitialAd;
 import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.formats.NativeAd;
-import com.google.android.gms.ads.formats.NativeAdView;
 import com.google.android.gms.ads.formats.NativeAppInstallAd;
 import com.google.android.gms.ads.formats.NativeAppInstallAdView;
 import com.google.android.gms.ads.formats.NativeContentAd;
@@ -46,11 +45,12 @@ import com.google.android.gms.ads.reward.RewardedVideoAd;
 import com.google.android.gms.ads.reward.RewardedVideoAdListener;
 import com.inlocomedia.android.ads.AdError;
 import com.inlocomedia.android.ads.AdManager;
+import com.inlocomedia.android.ads.AdManagerFactory;
+import com.inlocomedia.android.ads.AdManagerListener;
 import com.inlocomedia.android.ads.AdType;
 import com.inlocomedia.android.ads.InLocoMedia;
 import com.inlocomedia.android.ads.InLocoMediaOptions;
-import com.inlocomedia.android.ads.NativeViewBinder;
-import com.inlocomedia.android.ads.nativeads.NativeAdManagerInterface;
+import com.inlocomedia.android.ads.nativeads.NativeViewBinder;
 import com.inlocomedia.android.core.profile.Device;
 
 import java.util.List;
@@ -242,32 +242,39 @@ public class MainActivity extends AppCompatActivity {
                         frameLayout.removeAllViews();
                         frameLayout.addView(adView);
 
-                        NativeViewBinder viewBinder = getNativeViewBinder(adView);
+                        NativeViewBinder viewBinder = new NativeViewBinder.Builder()
+                                .setContainer(adView)
+                                .setTitle((TextView) adView.findViewById(R.id.ilm_title))
+                                .setDescription((TextView) adView.findViewById(R.id.ilm_description))
+                                .setCallToAction((TextView) adView.findViewById(R.id.ilm_call_to_action))
+                                .setImage((ImageView) adView.findViewById(R.id.ilm_image))
+                                .setIcon((ImageView) adView.findViewById(R.id.ilm_icon))
+                                .build();
 
-                        NativeAdManagerInterface nativeAdManagerInterface = new NativeAdManagerInterface(viewBinder) {
+                        AdManagerListener adManagerListener = new AdManagerListener() {
                             @Override
-                            public void onAdViewReady() {
+                            public void onAdViewReady(AdManager adManager) {
                                 Log.d("InLoco", "AdViewReady");
                             }
 
                             @Override
-                            public void onAdLeftApplication() {
-                                Log.d("InLoco", "AdLeftApplication");
+                            public void onAdError(AdManager adManager, AdError adError) {
+                                Log.d("InLoco", "AdError");
                             }
 
                             @Override
-                            public void onAdError(AdError adError) {
-                                Log.d("InLoco", "AdError");
+                            public void onAdLeftApplication(final AdManager adManager) {
+                                Log.d("InLoco", "AdLeftApplication");
                             }
                         };
 
-                        AdManager adManager = new AdManager(getApplicationContext(), AdType.NATIVE_LARGE, nativeAdManagerInterface);
+                        AdManager adManager = AdManagerFactory.createNativeAdManager(viewBinder, AdType.NATIVE_LARGE, adManagerListener);
 
                         String adUnitId = "bfe13804892dcaaa341b1d5ecad4b19ae4301137607c26c03605a7be97ba0504";
                         com.inlocomedia.android.ads.AdRequest adRequest = new com.inlocomedia.android.ads.AdRequest();
                         adRequest.setAdUnitId(adUnitId);
 
-                        adManager.loadAd(adRequest);
+                        adManager.loadAd(MainActivity.this, adRequest);
 
                     }
 
@@ -503,20 +510,6 @@ public class MainActivity extends AppCompatActivity {
             degree.setVisibility(View.VISIBLE);
             degree.setText(extras.getString(SampleCustomEvent.DEGREE_OF_AWESOMENESS));
         }
-    }
-
-    private NativeViewBinder getNativeViewBinder(View adView){
-
-        TextView title = (TextView) adView.findViewById(R.id.ilm_title);
-        TextView highlight = null;
-        TextView description = (TextView) adView.findViewById(R.id.ilm_description);
-        TextView callToAction = (TextView) adView.findViewById(R.id.ilm_call_to_action);
-        TextView offerText = null;
-        TextView expirationText = null;
-        ImageView image = (ImageView) adView.findViewById(R.id.ilm_image);
-        ImageView icon = (ImageView) adView.findViewById(R.id.ilm_icon);
-
-        return new NativeViewBinder(adView, title, highlight, description, callToAction, offerText, expirationText, image, icon);
     }
 
     private void initInLocoMediaSDK(){
